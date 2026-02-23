@@ -2,6 +2,7 @@ package helm
 
 import (
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -25,9 +26,11 @@ func (o *OCILoader) LoadTags(baseURL string) (*repo.IndexFile, error) {
 		return nil, fmt.Errorf("could not list tags for %s: %w", baseURL, err)
 	}
 
-	// Chart name from the last path segment.
-	parts := strings.Split(ref, "/")
-	chartName := parts[len(parts)-1]
+	ref = strings.TrimSuffix(ref, "/")
+	if ref == "" {
+		return nil, fmt.Errorf("invalid OCI reference: %s", baseURL)
+	}
+	chartName := path.Base(ref)
 
 	indexFile := repo.NewIndexFile()
 	versions := make(repo.ChartVersions, 0, len(tags))
