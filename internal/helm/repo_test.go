@@ -9,7 +9,7 @@ import (
 
 func TestLoadRepo(t *testing.T) {
 	var l helm.DirectLoader
-	indexFile, err := l.LoadIndexFile("https://aws.github.io/eks-charts")
+	indexFile, err := l.LoadIndexFile("https://aws.github.io/eks-charts", nil)
 	require.NoError(t, err)
 	require.NotNil(t, indexFile)
 	cv, err := indexFile.Get("aws-vpc-cni", "*")
@@ -21,7 +21,7 @@ func TestLoadRepo(t *testing.T) {
 
 func TestLoadOCIRepo(t *testing.T) {
 	var l helm.DirectLoader
-	indexFile, err := l.LoadIndexFile("oci://ghcr.io/grafana/helm-charts/grafana")
+	indexFile, err := l.LoadIndexFile("oci://ghcr.io/grafana/helm-charts/grafana", nil)
 	require.NoError(t, err)
 	require.NotNil(t, indexFile)
 	cv, err := indexFile.Get("grafana", "*")

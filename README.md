@@ -121,6 +121,46 @@ You can combine this with GitHub's auto-merge feature and status checks to compl
 
 This project comes with support for HTTPS, OCI, and [S3](./internal/helm/s3.go) backends.
 
+## OCI
+
+OCI repositories use the `oci://` scheme. No additional configuration is required for public registries.
+For private registries, authenticate with `docker login` or equivalent before running `helm-autoupdate`.
+
+Example `.helm-autoupdate.yaml` entry:
+```yaml
+charts:
+- chart:
+    name: grafana
+    repository: oci://ghcr.io/grafana/helm-charts
+    version: "*"
+  identity: grafana
+```
+
+## S3
+
+S3 repositories require AWS credentials. The AWS region is configured per chart via the optional `s3_region` field. If omitted, the region is resolved from the default AWS credential chain (e.g. `~/.aws/config` or `AWS_REGION` env var).
+
+Example `.helm-autoupdate.yaml` entry:
+```yaml
+charts:
+- chart:
+    name: my-chart
+    repository: s3://my-bucket/helm
+    s3_region: us-west-2
+    version: "*"
+  identity: my-chart
+```
+
+In GitHub Actions, configure AWS credentials before running the action:
+```yaml
+- name: Configure AWS Credentials
+  uses: aws-actions/configure-aws-credentials@v4
+  with:
+    aws-region: us-west-2
+- name: update helm
+  uses: cresta/helm-autoupdate@main
+```
+
 # Our personal GitHub actions workflows
 
 The workflow we use is the one below, which creates a pull request using a GitHub Application's token and enables auto

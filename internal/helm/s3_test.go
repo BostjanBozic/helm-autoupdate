@@ -14,7 +14,12 @@ func TestLoadS3(t *testing.T) {
 	if s3Repo == "" {
 		t.Skip("S3_REPO is not set")
 	}
-	indexFile, err := l.LoadIndexFile(s3Repo)
+	s3Region := os.Getenv("S3_REGION")
+	if s3Region == "" {
+		t.Skip("S3_REGION is not set")
+	}
+	chart := &helm.AutoUpdateChart{S3Region: s3Region}
+	indexFile, err := l.LoadIndexFile(s3Repo, chart)
 	require.NoError(t, err)
 	require.NotNil(t, indexFile)
 	_, err = indexFile.Get("missing-name", "*")

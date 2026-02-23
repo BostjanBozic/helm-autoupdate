@@ -39,7 +39,7 @@ func CheckForUpdate(il IndexLoader, desc *AutoUpdateChart, request *Update) (*Up
 	if strings.HasPrefix(desc.Repository, "oci://") {
 		indexURL = desc.Repository + "/" + desc.Name
 	}
-	indexFile, err := il.LoadIndexFile(indexURL)
+	indexFile, err := il.LoadIndexFile(indexURL, desc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load index file: %w", err)
 	}
@@ -66,6 +66,7 @@ type AutoUpdateChart struct {
 	Repository string `json:"repository"`
 	Name       string `json:"name"`
 	Version    string `json:"version"`
+	S3Region   string `json:"s3_region,omitempty"`
 }
 
 type ChangeFinder interface {

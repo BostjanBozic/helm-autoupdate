@@ -2,31 +2,48 @@ package helm
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"net/url"
+	"sync"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"helm.sh/helm/v3/pkg/getter"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-func S3Provider() getter.Provider {
-	return getter.Provider{
-		Schemes: []string{"s3"},
-		New: func(opts ...getter.Option) (getter.Getter, error) {
-			return NewS3Getter(opts)
-		},
-	}
-}
-
 type s3Getter struct {
-	s3Client *s3.S3
+	mu      sync.Mutex
+	clients map[string]*s3.Client
 }
 
-func (s *s3Getter) Get(s3Url string, _ ...getter.Option) (*bytes.Buffer, error) {
+func (s *s3Getter) getClient(region string) (*s3.Client, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.clients == nil {
+		s.clients = make(map[string]*s3.Client)
+	}
+	if c, ok := s.clients[region]; ok {
+		return c, nil
+	}
+	opts := []func(*config.LoadOptions) error{}
+	if region != "" {
+		opts = append(opts, config.WithRegion(region))
+	}
+	cfg, err := config.LoadDefaultConfig(context.Background(), opts...)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load AWS config: %w", err)
+	}
+	client := s3.NewFromConfig(cfg)
+	s.clients[region] = client
+	return client, nil
+}
+
+func (s *s3Getter) GetWithRegion(s3Url, region string) (*bytes.Buffer, error) {
 	u, err := url.Parse(s3Url)
 	if err != nil {
-		return nil, fmt.Errorf("invalid s3 s3Url format: %s", s3Url)
+		return nil, fmt.Errorf("invalid s3 URL format: %s", s3Url)
 	}
 	bucket := u.Host
 	key := u.Path
@@ -36,29 +53,21 @@ func (s *s3Getter) Get(s3Url string, _ ...getter.Option) (*bytes.Buffer, error) 
 	if key[0] == '/' {
 		key = key[1:]
 	}
-	params := &s3.GetObjectInput{
-		Bucket: &bucket,
-		Key:    &key,
+	client, err := s.getClient(region)
+	if err != nil {
+		return nil, err
 	}
-	resp, err := s.s3Client.GetObject(params)
+	resp, err := client.GetObject(context.Background(), &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to get s3 object: %w", err)
 	}
+	defer resp.Body.Close() //nolint:errcheck
 	var ret bytes.Buffer
-	_, err = ret.ReadFrom(resp.Body)
-	if err != nil {
+	if _, err = io.Copy(&ret, resp.Body); err != nil {
 		return nil, fmt.Errorf("unable to read s3 object: %w", err)
 	}
 	return &ret, nil
-}
-
-func NewS3Getter(_ []getter.Option) (getter.Getter, error) {
-	ses, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("unable to get s3 session: %w", err)
-	}
-	s3Client := s3.New(ses)
-	return &s3Getter{s3Client: s3Client}, nil
 }
