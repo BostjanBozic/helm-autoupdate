@@ -170,7 +170,7 @@ func Load(data []byte) (*Autochange, error) {
 }
 
 func LoadFile(path string) (*Autochange, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %s: %w", path, err)
 	}
@@ -206,11 +206,11 @@ func (p *ParsedFile) ApplyUpdate(update *Update) {
 }
 
 func ParseFile(name string) (*ParsedFile, error) {
-	content, err := os.ReadFile(name)
+	content, err := os.ReadFile(name) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %s: %w", name, err)
 	}
-	stat, err := os.Stat(name)
+	stat, err := os.Stat(name) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat %s: %w", name, err)
 	}

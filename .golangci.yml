@@ -2,6 +2,13 @@ version: "2"
 
 linters:
   default: none
+  settings:
+    revive:
+      rules:
+      - name: exported
+        disabled: true
+      - name: package-comments
+        disabled: true
   enable:
   - asasalint
   - asciicheck

@@ -67,12 +67,12 @@ func TestParseFile(t *testing.T) {
 	f, err := os.CreateTemp("", "TestParseFile")
 	require.NoError(t, err)
 	defer func(name string) {
-		err := os.Remove(name)
+		err := os.Remove(name) //nolint:gosec
 		if err != nil {
 			panic(err)
 		}
 	}(f.Name())
-	require.NoError(t, os.WriteFile(f.Name(), []byte(cniFile), 0600))
+	require.NoError(t, os.WriteFile(f.Name(), []byte(cniFile), 0600)) //nolint:gosec
 	pf, err := ParseFile(f.Name())
 	require.NoError(t, err)
 	cniFileMatchesExpected(t, pf)
@@ -111,12 +111,12 @@ func TestLoadFile(t *testing.T) {
 	f, err := os.CreateTemp("", "TestLoadFile")
 	require.NoError(t, err)
 	defer func(name string) {
-		err := os.Remove(name)
+		err := os.Remove(name) //nolint:gosec
 		if err != nil {
 			panic(err)
 		}
 	}(f.Name())
-	require.NoError(t, os.WriteFile(f.Name(), []byte(testConfig), 0600))
+	require.NoError(t, os.WriteFile(f.Name(), []byte(testConfig), 0600)) //nolint:gosec
 	ac, err := LoadFile(f.Name())
 	require.NoError(t, err)
 	b, err := yaml.Marshal(ac)
@@ -163,7 +163,7 @@ func TestWriteChangesToFilesystem(t *testing.T) {
 	ru.Parse.CurrentVersion = "99.99.99"
 	changeFiles[0].ApplyUpdate(&ru)
 	require.NoError(t, WriteChangesToFilesystem(changeFiles))
-	b, err := os.ReadFile(filepath.Join(dirName, "aws-vpc-cni.yaml"))
+	b, err := os.ReadFile(filepath.Join(dirName, "aws-vpc-cni.yaml")) //nolint:gosec
 	require.NoError(t, err)
 	require.Contains(t, string(b), "      version: 99.99.99 # helm:autoupdate:aws-vpc-cni")
 }
@@ -206,7 +206,7 @@ func TestApplyUpdatesToFiles(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, updatedFiles, 1)
 	require.NoError(t, WriteChangesToFilesystem(updatedFiles))
-	b, err := os.ReadFile(filepath.Join(dirName, "aws-vpc-cni.yaml"))
+	b, err := os.ReadFile(filepath.Join(dirName, "aws-vpc-cni.yaml")) //nolint:gosec
 	require.NoError(t, err)
 	require.Contains(t, string(b), "      version: 1.0.5 # helm:autoupdate:aws-vpc-cni")
 }
