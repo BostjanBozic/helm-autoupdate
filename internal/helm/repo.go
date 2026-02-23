@@ -41,6 +41,11 @@ func (r *DirectLoader) LoadIndexFile(baseURL string) (*repo.IndexFile, error) {
 		return nil, fmt.Errorf("invalid chart baseURL format: %s", baseURL)
 	}
 
+	if u.Scheme == "oci" {
+		var ociLoader OCILoader
+		return ociLoader.LoadTags(baseURL)
+	}
+
 	client, err := r.getProviders().ByScheme(u.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("could not find protocol handler for: %s", u.Scheme)

@@ -18,3 +18,14 @@ func TestLoadRepo(t *testing.T) {
 	_, err = indexFile.Get("missing-name", "*")
 	require.Error(t, err)
 }
+
+func TestLoadOCIRepo(t *testing.T) {
+	var l helm.DirectLoader
+	indexFile, err := l.LoadIndexFile("oci://ghcr.io/grafana/helm-charts/grafana")
+	require.NoError(t, err)
+	require.NotNil(t, indexFile)
+	cv, err := indexFile.Get("grafana", "*")
+	require.NoError(t, err)
+	require.Equal(t, "grafana", cv.Name)
+	require.NotEmpty(t, cv.Version)
+}

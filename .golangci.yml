@@ -1,5 +1,7 @@
+version: "2"
+
 linters:
-  disable-all: true
+  default: none
   enable:
   - asasalint
   - asciicheck
@@ -28,14 +30,11 @@ linters:
   - gocyclo
   - godot
   - godox
-  - gofmt
   - goheader
-  - goimports
   - gomoddirectives
   - gomodguard
   - goprintffuncname
   - gosec
-  - gosimple
   - govet
   - grouper
   - importas
@@ -58,14 +57,17 @@ linters:
   - reassign
   - revive
   - staticcheck
-  - stylecheck
   - testableexamples
   - thelper
   - tparallel
-  - typecheck
   - unconvert
   - unparam
   - unused
   - usestdlibvars
   - whitespace
   - wrapcheck
+
+formatters:
+  enable:
+  - gofmt
+  - goimports

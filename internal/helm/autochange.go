@@ -35,7 +35,11 @@ func (a *Autochange) findUpdateChartForUpdate(u *Update) *AutoUpdateChart {
 }
 
 func CheckForUpdate(il IndexLoader, desc *AutoUpdateChart, request *Update) (*Update, error) {
-	indexFile, err := il.LoadIndexFile(desc.Repository)
+	indexURL := desc.Repository
+	if strings.HasPrefix(desc.Repository, "oci://") {
+		indexURL = desc.Repository + "/" + desc.Name
+	}
+	indexFile, err := il.LoadIndexFile(indexURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load index file: %w", err)
 	}
