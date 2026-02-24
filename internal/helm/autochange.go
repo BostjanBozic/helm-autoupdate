@@ -14,12 +14,13 @@ import (
 // Autochange is the top-level configuration for helm-autoupdate, defining which
 // charts to track and which files to scan for update annotations.
 // Example:
-// charts:
-//   - identity: grafana-operator
-//     chart:
-//       repository: https://grafana.github.io/helm-charts
-//       name: grafana-operator
-//       version: "*"
+//
+//	charts:
+//	  - identity: grafana-operator
+//	    chart:
+//	      repository: https://grafana.github.io/helm-charts
+//	      name: grafana-operator
+//	      version: "*"
 type Autochange struct {
 	Charts        []AutoUpdateCharts `json:"charts"`
 	FilenameRegex []string           `json:"filename_regex,omitempty"`
