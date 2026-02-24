@@ -1,4 +1,4 @@
-module github.com/cresta/helm-autoupdate
+module github.com/bostjanbozic/helm-autoupdate
 
 go 1.26.0
 

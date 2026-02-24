@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cresta/helm-autoupdate/internal/helm"
+	"github.com/bostjanbozic/helm-autoupdate/internal/helm"
 	"github.com/stretchr/testify/require"
 )
 

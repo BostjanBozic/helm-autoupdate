@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cresta/helm-autoupdate/internal/helm"
+	"github.com/bostjanbozic/helm-autoupdate/internal/helm"
 )
 
 func main() {

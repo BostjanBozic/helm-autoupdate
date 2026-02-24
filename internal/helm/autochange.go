@@ -11,14 +11,15 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// Autochange is a Helm plugin that automatically changes the chart version.
+// Autochange is the top-level configuration for helm-autoupdate, defining which
+// charts to track and which files to scan for update annotations.
 // Example:
 // charts:
-//   - identity: datadog
+//   - identity: grafana-operator
 //     chart:
-//     repository: s3://cresta-helm-charts-v2/monorepo/cresta-datadog
-//     name: cresta-datadog
-//     version: "*"
+//       repository: https://grafana.github.io/helm-charts
+//       name: grafana-operator
+//       version: "*"
 type Autochange struct {
 	Charts        []AutoUpdateCharts `json:"charts"`
 	FilenameRegex []string           `json:"filename_regex,omitempty"`
