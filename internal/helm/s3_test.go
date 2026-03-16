@@ -12,11 +12,11 @@ func TestLoadS3(t *testing.T) {
 	var l helm.DirectLoader
 	s3Repo := os.Getenv("S3_REPO")
 	if s3Repo == "" {
-		t.Skip("S3_REPO is not set")
+		t.Skip("S3_REPO env var is not set")
 	}
 	s3Region := os.Getenv("S3_REGION")
 	if s3Region == "" {
-		t.Skip("S3_REGION is not set")
+		t.Skip("S3_REGION env var is not set")
 	}
 	chart := &helm.AutoUpdateChart{S3Region: s3Region}
 	indexFile, err := l.LoadIndexFile(s3Repo, chart)
