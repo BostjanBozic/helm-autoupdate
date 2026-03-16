@@ -161,109 +161,38 @@ In GitHub Actions, configure AWS credentials before running the action:
   uses: bostjanbozic/helm-autoupdate@main
 ```
 
-# Our personal GitHub actions workflows
-
-The workflow we use is the one below, which creates a pull request using a GitHub Application's token and enables auto
-merge on the pull request.  Each step is documented
+# Example GitHub actions workflows
 
 ```yaml
-name: Auto update helm files
+---
+name: Helm Chart auto-update
+
 on:
-  # Allow other workflows, which build helm charts, to trigger this workflow as a push event on new chart pushes
-  workflow_dispatch:
-  # Catch up daily
   schedule:
-    - cron: "0 0 * * *"
-jobs:
-  plantrigger:
-    runs-on: ubuntu-latest
-    name: Force update of helm versions
-    steps:
-      # Use a github application for our token.  You'll need to make the application and public a private key PEM as a secret
-      - name: Generate token
-        id: generate_token
-        uses: peter-murray/workflow-application-token-action@v1
-        with:
-          application_id: ${{ secrets.APP_ID }}
-          application_private_key: ${{ secrets.APP_PEM }}
-      - name: Checkout
-        uses: actions/checkout@v2
-      # We use S3, so also configure AWS credentials to read the S3 bucket
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
-          role-duration-seconds: 1200
-      # Do the helm updates
-      - name: update helm
-        uses: bostjanbozic/helm-autoupdate@v1
-      # Only make a PR if there are changes
-      - name: check for changes
-        id: changes
-        run: |
-          if [[ `git status --porcelain` ]]; then
-            echo '::set-output name=CHANGES::true'
-          else
-            echo '::set-output name=CHANGES::false'
-          fi
-      # Create the pull request (notice the if statement)
-      - name: Create PR to flux2 repo
-        uses: peter-evans/create-pull-request@v3
-        id: cpr
-        if: steps.changes.outputs.CHANGES == 'true'
-        with:
-          token: ${{ steps.generate_token.outputs.token }}
-          branch: helm-autoupdate
-          delete-branch: true
-          title: "Forced helm auto update"
-          labels: forced-workflow
-          body: "A forced auto update of helm versions"
-          commit-message: "A forced auto update of helm versions"
-      # Enable auto merge on the PR.  This part requires the generated token above
-      - name: Enable Pull Request Auto Merge
-        if: steps.cpr.outputs.pull-request-operation == 'created'
-        uses: peter-evans/enable-pull-request-automerge@v2
-        with:
-          token: ${{ steps.generate_token.outputs.token }}
-          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
-          merge-method: squash
-```
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
 
-This workflow allows itself to be triggered by other workflows.  In the repositories that create helm charts, they will
-run an action like this.
+permissions:
+  contents: write
+  pull-requests: write
 
-```yaml
-name: Build Project
-
-on: push
 
 jobs:
-  build:
-    name: Build
+  update-helm-charts:
+    name: Helm Chart auto-update
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-      # Setup AWS for chart upload
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      - uses: actions/checkout@v6
+      - name: Update Helm Charts
+        uses: bostjanbozic/helm-autoupdate@v2
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v8
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
-      # Build charts on every push
-      - name: Build charts
-        run: ./make.sh github_actions_lint_build_charts
-      # Only upload charts on the master branch
-      - name: Build and Push charts
-        if: github.ref == 'refs/heads/master'
-        run: ./make.sh github_actions_upload_charts
-      # Trigger an automatic update for helm versions
-
+          title: Auto-update Helm Charts
+          branch: chore/helm-chart-autoupdate
+          commit-message: "chore(helm): Auto-update Helm Chart versions"
+          body: |
+            Update Helm chart versions to latest version
+          labels: dependencies
 ```
-
-# Example
-
-For a simple example, see the workflow file in [helm-autoupdate-testing](https://github.com/bostjanbozic/helm-autoupdate-testing/blob/main/.github/workflows/update-helm-versions.yaml).
