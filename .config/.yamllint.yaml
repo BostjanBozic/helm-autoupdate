@@ -1,0 +1,13 @@
+---
+extends: default
+
+rules:
+  line-length:
+    allow-non-breakable-inline-mappings: true
+    max: 500
+  truthy:
+    allowed-values:
+      - "true"
+      - "false"
+      - "on"
+      - "off"
