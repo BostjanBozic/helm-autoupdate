@@ -67,12 +67,12 @@ func TestParseFile(t *testing.T) {
 	f, err := os.CreateTemp("", "TestParseFile")
 	require.NoError(t, err)
 	defer func(name string) {
-		err := os.Remove(name) //nolint:gosec
+		err := os.Remove(name)
 		if err != nil {
 			panic(err)
 		}
 	}(f.Name())
-	require.NoError(t, os.WriteFile(f.Name(), []byte(cniFile), 0600)) //nolint:gosec
+	require.NoError(t, os.WriteFile(f.Name(), []byte(cniFile), 0600))
 	pf, err := ParseFile(f.Name())
 	require.NoError(t, err)
 	cniFileMatchesExpected(t, pf)
@@ -111,12 +111,12 @@ func TestLoadFile(t *testing.T) {
 	f, err := os.CreateTemp("", "TestLoadFile")
 	require.NoError(t, err)
 	defer func(name string) {
-		err := os.Remove(name) //nolint:gosec
+		err := os.Remove(name)
 		if err != nil {
 			panic(err)
 		}
 	}(f.Name())
-	require.NoError(t, os.WriteFile(f.Name(), []byte(testConfig), 0600)) //nolint:gosec
+	require.NoError(t, os.WriteFile(f.Name(), []byte(testConfig), 0600))
 	ac, err := LoadFile(f.Name())
 	require.NoError(t, err)
 	b, err := yaml.Marshal(ac)

@@ -1,0 +1,16 @@
+{
+  "release-type": "simple",
+  "pull-request-header": ":robot: PR for new package release",
+  "pull-request-title-pattern": "chore${scope}: version release ${component} ${version}",
+  "packages": {
+    ".": {
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "path": "action.yml",
+          "type": "generic"
+        }
+      ]
+    }
+  }
+}

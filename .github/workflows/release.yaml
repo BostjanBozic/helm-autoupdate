@@ -1,8 +1,8 @@
 ---
-name: Build and test code
+name: Release Please
 
 on:
-  pull_request:
+  push:
     branches:
       - main
 
@@ -10,34 +10,35 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+
 jobs:
-  detect-changes:
+  release-please:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 20
     outputs:
-      changed: ${{ steps.filter.outputs.changed }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      release_major: ${{ steps.release.outputs.major }}
+      release_minor: ${{ steps.release.outputs.minor }}
+      release_patch: ${{ steps.release.outputs.patch }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v4
-        id: filter
+      - uses: googleapis/release-please-action@v4
+        id: release
         with:
-          list-files: shell
-          filters: |
-            changed:
-              - "**/*.go"
-              - "Dockerfile"
-              - "go.mod"
-              - "go.sum"
-              - ".golangci.yml"
+          config-file: .config/.release-please-config.json
+          manifest-file: .config/.release-please-manifest.json
 
   build:
-    name: Build image
+    name: Build release
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     timeout-minutes: 20
-    needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -68,6 +69,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/bostjanbozic/helm-autoupdate:pr-${{ github.event.pull_request.number }}
+          tags: |
+            ghcr.io/bostjanbozic/helm-autoupdate:${{ needs.release-please.outputs.release_major }}.${{ needs.release-please.outputs.release_minor }}.${{ needs.release-please.outputs.release_patch }}
+            ghcr.io/bostjanbozic/helm-autoupdate:${{ needs.release-please.outputs.release_major }}
+            ghcr.io/bostjanbozic/helm-autoupdate:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

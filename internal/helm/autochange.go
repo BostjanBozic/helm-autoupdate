@@ -213,7 +213,7 @@ func ParseFile(name string) (*ParsedFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %s: %w", name, err)
 	}
-	stat, err := os.Stat(name) //nolint:gosec
+	stat, err := os.Stat(name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat %s: %w", name, err)
 	}
