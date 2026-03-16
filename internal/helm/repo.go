@@ -5,9 +5,9 @@ import (
 	"net/url"
 	"sync"
 
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
+	repo "helm.sh/helm/v4/pkg/repo/v1"
 	"sigs.k8s.io/yaml"
 )
 
