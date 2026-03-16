@@ -16,5 +16,3 @@
 ### Bug Fixes
 
 * move to helm v4 ([53742f2](https://github.com/BostjanBozic/helm-autoupdate/commit/53742f27480aa02c7faaec7f7b06a4d1b54fb742))
-
-## Changelog
