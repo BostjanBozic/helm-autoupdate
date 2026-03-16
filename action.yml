@@ -6,4 +6,4 @@ branding:
   color: 'blue'
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/cresta/helm-autoupdate:1'
+  image: 'docker://ghcr.io/bostjanbozic/helm-autoupdate:1'

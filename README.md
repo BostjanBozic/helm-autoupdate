@@ -77,7 +77,7 @@ Next, triger a run of `helm-autoupdate`.  One way is to compile and run the bina
 
 ```bash
 cd /tmp
-git clone git@github.com:cresta/helm-autoupdate.git
+git clone git@github.com:bostjanbozic/helm-autoupdate.git
 go build ./cmd/helm-autoupdate
 cd -
 /tmp/helm-autoupdate
@@ -100,7 +100,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: update helm
-        uses: cresta/helm-autoupdate@v1.6
+        uses: bostjanbozic/helm-autoupdate@v1
       - name: Create PR with changes
         uses: peter-evans/create-pull-request@v3
         id: cpr
@@ -158,7 +158,7 @@ In GitHub Actions, configure AWS credentials before running the action:
   with:
     aws-region: us-west-2
 - name: update helm
-  uses: cresta/helm-autoupdate@main
+  uses: bostjanbozic/helm-autoupdate@main
 ```
 
 # Our personal GitHub actions workflows
@@ -198,7 +198,7 @@ jobs:
           role-duration-seconds: 1200
       # Do the helm updates
       - name: update helm
-        uses: cresta/helm-autoupdate@v1.7
+        uses: bostjanbozic/helm-autoupdate@v1
       # Only make a PR if there are changes
       - name: check for changes
         id: changes
@@ -219,7 +219,6 @@ jobs:
           delete-branch: true
           title: "Forced helm auto update"
           labels: forced-workflow
-          committer: Forced Replan <noreply@cresta.ai>
           body: "A forced auto update of helm versions"
           commit-message: "A forced auto update of helm versions"
       # Enable auto merge on the PR.  This part requires the generated token above
@@ -262,17 +261,9 @@ jobs:
         if: github.ref == 'refs/heads/master'
         run: ./make.sh github_actions_upload_charts
       # Trigger an automatic update for helm versions
-      - name: Tell helm auto update there may be a new helm version
-        if: github.ref == 'refs/heads/master'
-        run: gh -R cresta/flux2 workflow run helm-autoupdate.yml
-        env:
-          # Note: there are some bugs with application GH tokens that don't allow them
-          #       to dispatch workflows :(
-          # You need to use your personal token here
-          GH_TOKEN: ${{ secrets.GITHUB_PAT }}
 
 ```
 
 # Example
 
-For a simple example, see the workflow file in [helm-autoupdate-testing](https://github.com/cresta/helm-autoupdate-testing/blob/main/.github/workflows/update-helm-versions.yaml).  You can see a created PR [here](https://github.com/cresta/helm-autoupdate-testing/pull/2).
+For a simple example, see the workflow file in [helm-autoupdate-testing](https://github.com/bostjanbozic/helm-autoupdate-testing/blob/main/.github/workflows/update-helm-versions.yaml).
