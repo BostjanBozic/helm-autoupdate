@@ -39,6 +39,7 @@ jobs:
     timeout-minutes: 20
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -75,3 +76,22 @@ jobs:
             ghcr.io/bostjanbozic/helm-autoupdate:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  tag-major:
+    name: Update major version tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 5
+    needs:
+      - release-please
+      - build
+    if: ${{ needs.release-please.outputs.release_created }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Update v{major} tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "v${{ needs.release-please.outputs.release_major }}"
+          git push origin "v${{ needs.release-please.outputs.release_major }}" --force
