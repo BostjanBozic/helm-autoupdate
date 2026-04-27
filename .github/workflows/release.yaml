@@ -10,21 +10,23 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+permissions: {}
+
 
 jobs:
   release-please:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    timeout-minutes: 20
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       release_major: ${{ steps.release.outputs.major }}
       release_minor: ${{ steps.release.outputs.minor }}
       release_patch: ${{ steps.release.outputs.patch }}
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
         id: release
         with:
           config-file: .config/.release-please-config.json
@@ -32,25 +34,27 @@ jobs:
 
   build:
     name: Build release
-    runs-on: ubuntu-latest
+    if: ${{ needs.release-please.outputs.release_created }}
+    needs: release-please
     permissions:
       contents: read
       packages: write
+    runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-      - name: Install Go
-        uses: actions/setup-go@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
+          persist-credentials: true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
+      - name: Install Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
+        with:
+          cache: false
           go-version-file: 'go.mod'
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9.2.0
         with:
           version: latest
       - name: Build Go package
@@ -60,38 +64,43 @@ jobs:
       - name: Test Go package
         run: go test -v ./...
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7.1.0
         with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           context: .
           push: true
           tags: |
             ghcr.io/bostjanbozic/helm-autoupdate:${{ needs.release-please.outputs.release_major }}.${{ needs.release-please.outputs.release_minor }}.${{ needs.release-please.outputs.release_patch }}
             ghcr.io/bostjanbozic/helm-autoupdate:${{ needs.release-please.outputs.release_major }}
             ghcr.io/bostjanbozic/helm-autoupdate:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   tag-major:
     name: Update major version tag
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    timeout-minutes: 5
+    if: ${{ needs.release-please.outputs.release_created }}
     needs:
       - release-please
       - build
-    if: ${{ needs.release-please.outputs.release_created }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: true
       - name: Update v{major} tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -f "v${{ needs.release-please.outputs.release_major }}"
-          git push origin "v${{ needs.release-please.outputs.release_major }}" --force
+          git tag -f "v${RELEASE_MAJOR}"
+          git push origin "v${RELEASE_MAJOR}" --force
+        env:
+          RELEASE_MAJOR: ${{ needs.release-please.outputs.release_major }}

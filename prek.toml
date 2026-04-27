@@ -1,0 +1,70 @@
+# Configuration file for `prek`, a git hook framework written in Rust.
+# See https://prek.j178.dev for more information.
+#:schema https://www.schemastore.org/prek.json
+
+minimum_prek_version = "0.3.8"
+
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "3e8a8703264a2f4a69428a0aa4dcb512790b2c8c" # frozen: v6.0.0
+hooks = [
+  {
+    id = "check-added-large-files",
+    args = ["--maxkb=1024"]
+  },
+  { id = "check-case-conflict" },
+  { id = "check-executables-have-shebangs" },
+  { id = "check-json" },
+  { id = "check-merge-conflict" },
+  { id = "check-symlinks" },
+  { id = "check-toml" },
+  { id = "check-vcs-permalinks" },
+  { id = "check-xml" },
+  {
+    id = "end-of-file-fixer",
+    exclude = "(^|/)README\\.md$"
+  },
+  {
+    id = "trailing-whitespace",
+    exclude = "(^|/)README\\.md$"
+  }
+]
+
+[[repos]]
+repo = "https://github.com/compilerla/conventional-pre-commit"
+rev = "91ab4bf57e58b32adf1a122681f6ebe164d081c8" # frozen: v4.4.0
+hooks = [
+  {
+    id = "conventional-pre-commit",
+    stages = ["commit-msg"]
+  }
+]
+
+[[repos]]
+repo = "https://github.com/tekwizely/pre-commit-golang"
+rev = "f298c082154b2cb239fac06a4f452368e66e66dd" # frozen: v1.0.0-rc.4
+hooks = [
+  { id = "go-fmt" },
+  { id = "go-vet-mod" },
+  { id = "go-mod-tidy" }
+]
+
+[[repos]]
+repo = "https://github.com/adrienverge/yamllint.git"
+rev = "cba56bcde1fdd01c1deb3f945e69764c291a6530" # frozen: v1.38.0
+hooks = [
+  {
+    id = "yamllint",
+    args = [
+      "--config-file=.config/.yamllint.yaml",
+      "--strict"
+    ]
+  }
+]
+
+[[repos]]
+repo = "https://github.com/zizmorcore/zizmor-pre-commit"
+rev = "ea2eb407b4cbce87cf0d502f36578950494f5ac9" # frozen: v1.23.1
+hooks = [
+  { id = "zizmor" }
+]
