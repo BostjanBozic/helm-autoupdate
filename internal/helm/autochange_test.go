@@ -4,8 +4,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	repo "helm.sh/helm/v4/pkg/repo/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -209,4 +212,99 @@ func TestApplyUpdatesToFiles(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(dirName, "aws-vpc-cni.yaml")) //nolint:gosec
 	require.NoError(t, err)
 	require.Contains(t, string(b), "      version: 1.0.5 # helm:autoupdate:aws-vpc-cni")
+}
+
+type mockIndexLoader struct {
+	indexFile *repo.IndexFile
+}
+
+func (m *mockIndexLoader) LoadIndexFile(_ string, _ *AutoUpdateChart) (*repo.IndexFile, error) {
+	return m.indexFile, nil
+}
+
+type chartVersionEntry struct {
+	version string
+	created time.Time
+}
+
+func makeIndexFileMulti(entries ...chartVersionEntry) *repo.IndexFile {
+	idx := repo.NewIndexFile()
+	versions := make(repo.ChartVersions, 0, len(entries))
+	for _, e := range entries {
+		versions = append(versions, &repo.ChartVersion{
+			Metadata: &chart.Metadata{Name: "testchart", Version: e.version},
+			Created:  e.created,
+		})
+	}
+	idx.Entries["testchart"] = versions
+	return idx
+}
+
+func makeIndexFile(created time.Time) *repo.IndexFile {
+	return makeIndexFileMulti(chartVersionEntry{version: "1.0.0", created: created})
+}
+
+func TestCheckForUpdate_Cooldown(t *testing.T) {
+	desc := &AutoUpdateChart{
+		Repository: "https://example.com",
+		Name:       "testchart",
+		Version:    "*",
+	}
+	request := &Update{Parse: &LineParse{CurrentVersion: "0.0.1", Identity: "testchart"}}
+
+	t.Run("no cooldown - recent version still updates", func(t *testing.T) {
+		desc.CooldownDays = 0
+		il := &mockIndexLoader{indexFile: makeIndexFile(time.Now().Add(-1 * time.Hour))}
+		result, err := CheckForUpdate(il, desc, request)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+
+	t.Run("cooldown satisfied - version old enough", func(t *testing.T) {
+		desc.CooldownDays = 7
+		il := &mockIndexLoader{indexFile: makeIndexFile(time.Now().Add(-8 * 24 * time.Hour))}
+		result, err := CheckForUpdate(il, desc, request)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+
+	t.Run("cooldown active - version too recent", func(t *testing.T) {
+		desc.CooldownDays = 7
+		il := &mockIndexLoader{indexFile: makeIndexFile(time.Now().Add(-1 * time.Hour))}
+		result, err := CheckForUpdate(il, desc, request)
+		require.NoError(t, err)
+		require.Nil(t, result)
+	})
+
+	t.Run("cooldown set but Created is zero - update proceeds (OCI)", func(t *testing.T) {
+		desc.CooldownDays = 7
+		il := &mockIndexLoader{indexFile: makeIndexFile(time.Time{})}
+		result, err := CheckForUpdate(il, desc, request)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+
+	t.Run("fallback to older version when latest is within cooldown", func(t *testing.T) {
+		desc.CooldownDays = 7
+		il := &mockIndexLoader{indexFile: makeIndexFileMulti(
+			chartVersionEntry{"1.1.0", time.Now().Add(-1 * time.Hour)},      // too recent
+			chartVersionEntry{"1.0.0", time.Now().Add(-8 * 24 * time.Hour)}, // past cooldown
+		)}
+		result, err := CheckForUpdate(il, desc, request)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Equal(t, "1.0.0", result.Parse.CurrentVersion)
+	})
+
+	t.Run("no downgrade when all newer versions are within cooldown", func(t *testing.T) {
+		desc.CooldownDays = 7
+		requestAt120 := &Update{Parse: &LineParse{CurrentVersion: "1.2.0", Identity: "testchart"}}
+		il := &mockIndexLoader{indexFile: makeIndexFileMulti(
+			chartVersionEntry{"1.2.0", time.Now().Add(-1 * time.Hour)},      // too recent (same as current)
+			chartVersionEntry{"1.1.0", time.Now().Add(-8 * 24 * time.Hour)}, // past cooldown but older than current
+		)}
+		result, err := CheckForUpdate(il, desc, requestAt120)
+		require.NoError(t, err)
+		require.Nil(t, result)
+	})
 }
