@@ -240,8 +240,8 @@ func makeIndexFileMulti(entries ...chartVersionEntry) *repo.IndexFile {
 	return idx
 }
 
-func makeIndexFile(version string, created time.Time) *repo.IndexFile {
-	return makeIndexFileMulti(chartVersionEntry{version: version, created: created})
+func makeIndexFile(created time.Time) *repo.IndexFile {
+	return makeIndexFileMulti(chartVersionEntry{version: "1.0.0", created: created})
 }
 
 func TestCheckForUpdate_Cooldown(t *testing.T) {
@@ -250,14 +250,11 @@ func TestCheckForUpdate_Cooldown(t *testing.T) {
 		Name:       "testchart",
 		Version:    "*",
 	}
-	request := &Update{
-		LineNumber: 0,
-		Parse:      &LineParse{CurrentVersion: "0.0.1", Identity: "testchart"},
-	}
+	request := &Update{Parse: &LineParse{CurrentVersion: "0.0.1", Identity: "testchart"}}
 
 	t.Run("no cooldown - recent version still updates", func(t *testing.T) {
 		desc.CooldownDays = 0
-		il := &mockIndexLoader{indexFile: makeIndexFile("1.0.0", time.Now().Add(-1*time.Hour))}
+		il := &mockIndexLoader{indexFile: makeIndexFile(time.Now().Add(-1 * time.Hour))}
 		result, err := CheckForUpdate(il, desc, request)
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -265,7 +262,7 @@ func TestCheckForUpdate_Cooldown(t *testing.T) {
 
 	t.Run("cooldown satisfied - version old enough", func(t *testing.T) {
 		desc.CooldownDays = 7
-		il := &mockIndexLoader{indexFile: makeIndexFile("1.0.0", time.Now().Add(-8*24*time.Hour))}
+		il := &mockIndexLoader{indexFile: makeIndexFile(time.Now().Add(-8 * 24 * time.Hour))}
 		result, err := CheckForUpdate(il, desc, request)
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -273,7 +270,7 @@ func TestCheckForUpdate_Cooldown(t *testing.T) {
 
 	t.Run("cooldown active - version too recent", func(t *testing.T) {
 		desc.CooldownDays = 7
-		il := &mockIndexLoader{indexFile: makeIndexFile("1.0.0", time.Now().Add(-1*time.Hour))}
+		il := &mockIndexLoader{indexFile: makeIndexFile(time.Now().Add(-1 * time.Hour))}
 		result, err := CheckForUpdate(il, desc, request)
 		require.NoError(t, err)
 		require.Nil(t, result)
@@ -281,7 +278,7 @@ func TestCheckForUpdate_Cooldown(t *testing.T) {
 
 	t.Run("cooldown set but Created is zero - update proceeds (OCI)", func(t *testing.T) {
 		desc.CooldownDays = 7
-		il := &mockIndexLoader{indexFile: makeIndexFile("1.0.0", time.Time{})}
+		il := &mockIndexLoader{indexFile: makeIndexFile(time.Time{})}
 		result, err := CheckForUpdate(il, desc, request)
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -301,10 +298,7 @@ func TestCheckForUpdate_Cooldown(t *testing.T) {
 
 	t.Run("no downgrade when all newer versions are within cooldown", func(t *testing.T) {
 		desc.CooldownDays = 7
-		requestAt120 := &Update{
-			LineNumber: 0,
-			Parse:      &LineParse{CurrentVersion: "1.2.0", Identity: "testchart"},
-		}
+		requestAt120 := &Update{Parse: &LineParse{CurrentVersion: "1.2.0", Identity: "testchart"}}
 		il := &mockIndexLoader{indexFile: makeIndexFileMulti(
 			chartVersionEntry{"1.2.0", time.Now().Add(-1 * time.Hour)},      // too recent (same as current)
 			chartVersionEntry{"1.1.0", time.Now().Add(-8 * 24 * time.Hour)}, // past cooldown but older than current
