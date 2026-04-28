@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/BostjanBozic/helm-autoupdate/compare/v2.0.0...v2.1.0) (2026-04-28)
+
+
+### Features
+
+* cooldown period parameter per helm chart ([4514354](https://github.com/BostjanBozic/helm-autoupdate/commit/4514354a97c14d37ff3d72a8deaa7a6452831f36))
+
 ## [2.0.0](https://github.com/BostjanBozic/helm-autoupdate/compare/v1.0.2...v2.0.0) (2026-03-16)
 
 
