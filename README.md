@@ -19,7 +19,7 @@ spec:
         name: aws
       version: 0.0.1
   interval: 1m0s
-  timeout: 10
+  timeout: 10m
   values:
     replicaCount: 1
 ```
@@ -38,7 +38,7 @@ that will bump the `version` field when a new helm chart is released.  This is w
 # Usage
 
 First, add a file named `.helm-autoupdate.yaml` in the root of your repository.  Add a `chart` item for each chart you want to update.
-The field "filename_regex" is an optional list of whitelisted filenames.  If you don't specify it, all files will be considered.
+The field `filename_regex` is an optional list of filename patterns to scan. If omitted, all files are considered.
 
 ```yaml
 charts:
@@ -51,8 +51,8 @@ filename_regex:
 - .*\.yaml
 ```
 
-Next, change the `version` line to include the YAML comment `# helm:autoupdate:<IDENTITY>` where `<IDENTITY>` is the value
-of the `charts[].identity` field.  For example, the original file now becomes
+Next, add the YAML comment `# helm:autoupdate:<IDENTITY>` to the `version` line you want tracked, where `<IDENTITY>` matches
+the `charts[].identity` value. Identity values may only contain letters, digits, and hyphens (`[a-zA-Z0-9-]`).
 
 ```yaml
 apiVersion: helm.toolkit.fluxcd.io/v2beta1
@@ -73,7 +73,10 @@ spec:
     replicaCount: 1
 ```
 
-Next, triger a run of `helm-autoupdate`.  One way is to compile and run the binary with `go run`.  For example
+When `helm-autoupdate` runs, it replaces `0.0.1` with the latest version that satisfies the `version` constraint defined in
+`.helm-autoupdate.yaml`. Use `"*"` for the absolute latest, or a semver constraint such as `"1.*"` to stay within a major version.
+
+To trigger a run locally, build and execute the binary from the root of your repository:
 
 ```bash
 cd /tmp
@@ -83,39 +86,39 @@ cd -
 /tmp/helm-autoupdate
 ```
 
-If you're using GitHub actions, a more reasonable way is to trigger the update as a workflow.  An example workflow is
-below.  This will trigger on a manual execution of the workflow, as well as daily at midnight.
-
-```yaml
-name: Force a helm update
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * *"
-jobs:
-  plantrigger:
-    runs-on: ubuntu-latest
-    name: Force helm update
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: update helm
-        uses: bostjanbozic/helm-autoupdate@v1
-      - name: Create PR with changes
-        uses: peter-evans/create-pull-request@v3
-        id: cpr
-        with:
-          branch: helm-updates
-          delete-branch: true
-          title: "Force helm updates"
-          labels: forced-workflow
-          committer: Forced updates <noreply@noreply.com>
-          body: "Updated helm versions"
-          commit-message: "Updates helm versions"
-
-```
+For automated updates, see [Example GitHub Actions workflows](#example-github-actions-workflows) below.
 
 You can combine this with GitHub's auto-merge feature and status checks to complete the auto merge.
+
+# Configuration reference
+
+| Field | Required | Description |
+|---|---|---|
+| `charts[].identity` | yes | Unique name referenced in `# helm:autoupdate:<IDENTITY>` comments. Allowed characters: `[a-zA-Z0-9-]`. |
+| `charts[].chart.name` | yes | Helm chart name. |
+| `charts[].chart.repository` | yes | Repository URL. Supports `https://`, `oci://`, and `s3://` schemes. |
+| `charts[].chart.version` | yes | Semver constraint for the target version. Use `"*"` for latest. |
+| `charts[].chart.s3_region` | no | AWS region for S3 repositories. Falls back to the default credential chain if omitted. |
+| `charts[].chart.cooldown_days` | no | Fall back to the most recent version outside the cooldown window instead of updating to a version published fewer than N days ago. Never downgrades below the current version. See [Cooldown period](#cooldown-period). |
+| `filename_regex` | no | List of regex patterns limiting which files are scanned. All files are scanned if omitted. |
+
+# Cooldown period
+
+The optional `cooldown_days` field per chart prevents updating to a version published less than N days ago — similar to `dependabot cooldown.default-days`. This lets a new release stabilise before it is automatically applied.
+
+```yaml
+charts:
+- chart:
+    name: aws-vpc-cni
+    repository: https://aws.github.io/eks-charts
+    version: "*"
+    cooldown_days: 7
+  identity: aws-vpc-cni
+```
+
+When a cooldown is active, `helm-autoupdate` does not skip the update entirely. It iterates available versions newest-first and picks the most recent one that is both outside the cooldown window and satisfies the `version` constraint. For example, with `cooldown_days: 7` and versions `1.2.0` (2 days old) and `1.1.0` (10 days old), the tool updates to `1.1.0`. The tool never downgrades: if all versions outside the cooldown window are older than the currently pinned version, the update is skipped.
+
+The publish date is read from the `created` field in the Helm repository's `index.yaml`. OCI tag listings carry no publish date metadata, so `cooldown_days` has no effect on OCI repositories.
 
 # Supported helm backends
 
@@ -158,10 +161,10 @@ In GitHub Actions, configure AWS credentials before running the action:
   with:
     aws-region: us-west-2
 - name: update helm
-  uses: bostjanbozic/helm-autoupdate@main
+  uses: bostjanbozic/helm-autoupdate@v2
 ```
 
-# Example GitHub actions workflows
+# Example GitHub Actions workflows
 
 ```yaml
 ---
@@ -183,7 +186,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Update Helm Charts
         uses: bostjanbozic/helm-autoupdate@v2
       - name: Create Pull Request

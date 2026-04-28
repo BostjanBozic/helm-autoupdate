@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path"
 	"strings"
-	"time"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/registry"
@@ -40,8 +39,7 @@ func (o *OCILoader) LoadTags(baseURL string) (*repo.IndexFile, error) {
 				Name:    chartName,
 				Version: tag,
 			},
-			URLs:    []string{baseURL},
-			Created: time.Now(),
+			URLs: []string{baseURL},
 		})
 	}
 	indexFile.Entries[chartName] = versions

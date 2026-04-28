@@ -3,11 +3,15 @@ package helm
 import (
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
+	semver "github.com/Masterminds/semver/v3"
+	repo "helm.sh/helm/v4/pkg/repo/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -36,6 +40,44 @@ func (a *Autochange) findUpdateChartForUpdate(u *Update) *AutoUpdateChart {
 	return nil
 }
 
+func latestVersionWithCooldown(indexFile *repo.IndexFile, desc *AutoUpdateChart, currentVersion string) (*repo.ChartVersion, error) {
+	entries, ok := indexFile.Entries[desc.Name]
+	if !ok || len(entries) == 0 {
+		return nil, fmt.Errorf("chart %s not found in index", desc.Name)
+	}
+	constraint, err := semver.NewConstraint(desc.Version)
+	if err != nil {
+		return nil, fmt.Errorf("invalid version constraint %q: %w", desc.Version, err)
+	}
+	indexFile.SortEntries()
+	for _, cv := range indexFile.Entries[desc.Name] {
+		v, err := semver.NewVersion(cv.Version)
+		if err != nil {
+			continue
+		}
+		if !constraint.Check(v) {
+			continue
+		}
+		if desc.CooldownDays > 0 && !cv.Created.IsZero() {
+			if time.Since(cv.Created) < time.Duration(desc.CooldownDays)*24*time.Hour {
+				slog.Info("version in cooldown, trying older",
+					"chart", desc.Name,
+					"from", currentVersion,
+					"to", cv.Version,
+				)
+				continue
+			}
+		}
+		return cv, nil
+	}
+	slog.Info("all versions in cooldown, skipping",
+		"chart", desc.Name,
+		"from", currentVersion,
+		"to", "",
+	)
+	return nil, nil
+}
+
 func CheckForUpdate(il IndexLoader, desc *AutoUpdateChart, request *Update) (*Update, error) {
 	indexURL := desc.Repository
 	if strings.HasPrefix(desc.Repository, "oci://") {
@@ -45,13 +87,44 @@ func CheckForUpdate(il IndexLoader, desc *AutoUpdateChart, request *Update) (*Up
 	if err != nil {
 		return nil, fmt.Errorf("failed to load index file: %w", err)
 	}
-	cv, err := indexFile.Get(desc.Name, desc.Version)
+	cv, err := latestVersionWithCooldown(indexFile, desc, strings.TrimSpace(request.Parse.CurrentVersion))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get version for chart %s: %w", desc.Name, err)
 	}
-	if strings.TrimSpace(cv.Version) == strings.TrimSpace(request.Parse.CurrentVersion) {
+	if cv == nil {
 		return nil, nil
 	}
+	currentSemver, currentErr := semver.NewVersion(strings.TrimSpace(request.Parse.CurrentVersion))
+	candidateSemver, candidateErr := semver.NewVersion(strings.TrimSpace(cv.Version))
+	if currentErr == nil && candidateErr == nil && !candidateSemver.GreaterThan(currentSemver) {
+		if candidateSemver.LessThan(currentSemver) {
+			slog.Info("current version ahead of cooldown candidate, skipping",
+				"chart", desc.Name,
+				"from", request.Parse.CurrentVersion,
+				"to", cv.Version,
+			)
+		} else {
+			slog.Info("already on latest version",
+				"chart", desc.Name,
+				"from", request.Parse.CurrentVersion,
+				"to", cv.Version,
+			)
+		}
+		return nil, nil
+	}
+	if strings.TrimSpace(cv.Version) == strings.TrimSpace(request.Parse.CurrentVersion) {
+		slog.Info("already on latest version",
+			"chart", desc.Name,
+			"from", request.Parse.CurrentVersion,
+			"to", cv.Version,
+		)
+		return nil, nil
+	}
+	slog.Info("updating chart version",
+		"chart", desc.Name,
+		"from", request.Parse.CurrentVersion,
+		"to", cv.Version,
+	)
 	ret := *request
 	tmpParse := *request.Parse
 	ret.Parse = &tmpParse
@@ -65,10 +138,11 @@ type AutoUpdateCharts struct {
 }
 
 type AutoUpdateChart struct {
-	Repository string `json:"repository"`
-	Name       string `json:"name"`
-	Version    string `json:"version"`
-	S3Region   string `json:"s3_region,omitempty"`
+	Repository   string `json:"repository"`
+	Name         string `json:"name"`
+	Version      string `json:"version"`
+	S3Region     string `json:"s3_region,omitempty"`
+	CooldownDays int    `json:"cooldown_days,omitempty"`
 }
 
 type ChangeFinder interface {
@@ -93,7 +167,6 @@ func ApplyUpdatesToFiles(il IndexLoader, config *Autochange, files []*ParsedFile
 	for _, file := range files {
 		hasModification := false
 		for _, update := range file.RequestedUpdates {
-			update := update
 			uc := config.findUpdateChartForUpdate(&update)
 			if uc == nil {
 				continue
