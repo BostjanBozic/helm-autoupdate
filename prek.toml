@@ -42,7 +42,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/golangci/golangci-lint"
-rev = "8f3b0c7ed018e57905fbd873c697e0b1ede605a5" # frozen: v2.11.4
+rev = "9aa24e94ceb7d1a8ccbde81e7424629467299a7e" # frozen: v2.12.1
 hooks = [
   { id = "golangci-lint" }
 ]
