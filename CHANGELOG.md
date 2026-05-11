@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/BostjanBozic/helm-autoupdate/compare/v2.1.0...v2.1.1) (2026-05-11)
+
+
+### Bug Fixes
+
+* release please autoupdate for action.yaml ([7fb193d](https://github.com/BostjanBozic/helm-autoupdate/commit/7fb193d29bb183583eb80e301c0c83b5f4137fa1))
+
 ## [2.1.0](https://github.com/BostjanBozic/helm-autoupdate/compare/v2.0.0...v2.1.0) (2026-04-28)
 
 
