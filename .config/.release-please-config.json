@@ -7,7 +7,7 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "path": "action.yml",
+          "path": "action.yaml",
           "type": "generic"
         }
       ]

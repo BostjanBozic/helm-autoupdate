@@ -1,5 +1,4 @@
 ---
-# action.yml
 name: 'Helm Autoupdate'
 description: 'Uses a helm autoupdate file to modify the current directory'
 branding:
@@ -7,4 +6,4 @@ branding:
   color: 'blue'
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/bostjanbozic/helm-autoupdate:2.0.0'  # x-release-please-version
+  image: 'docker://ghcr.io/bostjanbozic/helm-autoupdate:2.1.0'  # x-release-please-version
