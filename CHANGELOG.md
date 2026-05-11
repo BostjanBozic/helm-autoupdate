@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/BostjanBozic/helm-autoupdate/compare/v2.1.1...v2.1.2) (2026-05-11)
+
+
+### Bug Fixes
+
+* lint issues fix ([536f601](https://github.com/BostjanBozic/helm-autoupdate/commit/536f60123b63e96824be56cd5c344c5791b12e34))
+
 ## [2.1.1](https://github.com/BostjanBozic/helm-autoupdate/compare/v2.1.0...v2.1.1) (2026-05-11)
 
 
