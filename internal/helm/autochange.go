@@ -25,6 +25,7 @@ import (
 //	      repository: https://grafana.github.io/helm-charts
 //	      name: grafana-operator
 //	      version: "*"
+
 type Autochange struct {
 	Charts        []AutoUpdateCharts `json:"charts"`
 	FilenameRegex []string           `json:"filename_regex,omitempty"`
