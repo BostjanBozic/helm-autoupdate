@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.3](https://github.com/BostjanBozic/helm-autoupdate/compare/v2.1.2...v2.1.3) (2026-05-11)
+
+
+### Bug Fixes
+
+* bump for new version release ([db84751](https://github.com/BostjanBozic/helm-autoupdate/commit/db84751d24202f66d29fa62accd5c80a5c2e7a28))
+
 ## [2.1.2](https://github.com/BostjanBozic/helm-autoupdate/compare/v2.1.1...v2.1.2) (2026-05-11)
 
 
