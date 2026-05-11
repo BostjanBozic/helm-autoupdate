@@ -26,6 +26,11 @@ func TestParseLine_String(t *testing.T) {
 	require.Equal(t, "  version: 0.3.6 # helm:autoupdate:datadog", ParseLine("  version: 0.3.6 # helm:autoupdate:datadog").String())
 }
 
+const (
+	identityAWSVPCCNI = "aws-vpc-cni"
+	chartNameTest     = "testchart"
+)
+
 const cniFile = `apiVersion: toolkit.fluxcd.io/v2beta1
 kind: HelmRelease
 metadata:
@@ -54,7 +59,7 @@ func cniFileMatchesExpected(t *testing.T, pf *ParsedFile) {
 			Parse: &LineParse{
 				Prefix:         "      version",
 				CurrentVersion: "0.3.6",
-				Identity:       "aws-vpc-cni",
+				Identity:       identityAWSVPCCNI,
 				Suffix:         "",
 			},
 		},
@@ -88,7 +93,7 @@ func TestApplyUpdate(t *testing.T) {
 		Parse: &LineParse{
 			Prefix:         "      version",
 			CurrentVersion: "0.0.0",
-			Identity:       "aws-vpc-cni",
+			Identity:       identityAWSVPCCNI,
 			Suffix:         "",
 		},
 	})
@@ -185,7 +190,7 @@ func TestFindUpdateChartForUpdate(t *testing.T) {
 	require.Nil(t, x)
 	x = ac.findUpdateChartForUpdate(&Update{
 		Parse: &LineParse{
-			Identity: "aws-vpc-cni",
+			Identity: identityAWSVPCCNI,
 		},
 	})
 	require.NotNil(t, x)
@@ -232,11 +237,11 @@ func makeIndexFileMulti(entries ...chartVersionEntry) *repo.IndexFile {
 	versions := make(repo.ChartVersions, 0, len(entries))
 	for _, e := range entries {
 		versions = append(versions, &repo.ChartVersion{
-			Metadata: &chart.Metadata{Name: "testchart", Version: e.version},
+			Metadata: &chart.Metadata{Name: chartNameTest, Version: e.version},
 			Created:  e.created,
 		})
 	}
-	idx.Entries["testchart"] = versions
+	idx.Entries[chartNameTest] = versions
 	return idx
 }
 
@@ -247,10 +252,10 @@ func makeIndexFile(created time.Time) *repo.IndexFile {
 func TestCheckForUpdate_Cooldown(t *testing.T) {
 	desc := &AutoUpdateChart{
 		Repository: "https://example.com",
-		Name:       "testchart",
+		Name:       chartNameTest,
 		Version:    "*",
 	}
-	request := &Update{Parse: &LineParse{CurrentVersion: "0.0.1", Identity: "testchart"}}
+	request := &Update{Parse: &LineParse{CurrentVersion: "0.0.1", Identity: chartNameTest}}
 
 	t.Run("no cooldown - recent version still updates", func(t *testing.T) {
 		desc.CooldownDays = 0
@@ -298,7 +303,7 @@ func TestCheckForUpdate_Cooldown(t *testing.T) {
 
 	t.Run("no downgrade when all newer versions are within cooldown", func(t *testing.T) {
 		desc.CooldownDays = 7
-		requestAt120 := &Update{Parse: &LineParse{CurrentVersion: "1.2.0", Identity: "testchart"}}
+		requestAt120 := &Update{Parse: &LineParse{CurrentVersion: "1.2.0", Identity: chartNameTest}}
 		il := &mockIndexLoader{indexFile: makeIndexFileMulti(
 			chartVersionEntry{"1.2.0", time.Now().Add(-1 * time.Hour)},      // too recent (same as current)
 			chartVersionEntry{"1.1.0", time.Now().Add(-8 * 24 * time.Hour)}, // past cooldown but older than current
