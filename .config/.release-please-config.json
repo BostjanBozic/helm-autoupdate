@@ -1,7 +1,21 @@
 {
   "release-type": "simple",
-  "pull-request-header": ":robot: PR for new package release",
+  "pull-request-header": ":robot: PR for new Helm Autoupdate release",
   "pull-request-title-pattern": "chore${scope}: version release ${component} ${version}",
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "Features"
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes"
+    },
+    {
+      "type": "deps",
+      "section": "Dependencies"
+    }
+  ],
   "packages": {
     ".": {
       "changelog-path": "CHANGELOG.md",

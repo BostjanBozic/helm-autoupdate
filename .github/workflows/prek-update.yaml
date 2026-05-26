@@ -36,7 +36,7 @@ jobs:
           body: |
             Update versions of tools in pre-commit configs to latest version
           branch: chore/prek-autoupdate
-          commit-message: "chore: [dependabot skip] Auto-update pre-commit hooks"
+          commit-message: "chore(prek): auto-update hooks"
           labels: dependencies
           title: Auto-update pre-commit hooks
           token: ${{ secrets.GITHUB_TOKEN }}
