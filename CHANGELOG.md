@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.0](https://github.com/BostjanBozic/helm-autoupdate/compare/v2.1.3...v2.2.0) (2026-06-24)
+
+
+### Features
+
+* support global cooldown_days ([16b12e0](https://github.com/BostjanBozic/helm-autoupdate/commit/16b12e09bfa97e1304b0dc95ebad61aaafbb1e9d))
+* support global filename_regex ([16b12e0](https://github.com/BostjanBozic/helm-autoupdate/commit/16b12e09bfa97e1304b0dc95ebad61aaafbb1e9d))
+
 ## [2.1.3](https://github.com/BostjanBozic/helm-autoupdate/compare/v2.1.2...v2.1.3) (2026-05-11)
 
 
