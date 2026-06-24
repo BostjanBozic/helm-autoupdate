@@ -26,7 +26,8 @@ func main() {
 		slog.Error("unable to load .helm-autoupdate.yaml", "error", err)
 		os.Exit(1)
 	}
-	changeFiles, err := x.FindRequestedChanges(ac.ParsedRegex)
+
+	changeFiles, err := x.FindRequestedChanges(nil)
 	if err != nil {
 		slog.Error("unable to find requested changes", "error", err)
 		os.Exit(1)

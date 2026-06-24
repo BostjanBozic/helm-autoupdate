@@ -206,7 +206,7 @@ func TestApplyUpdatesToFiles(t *testing.T) {
 	x := DirectorySearchForChanges{
 		Dir: dirName,
 	}
-	pf, err := x.FindRequestedChanges(ac.ParsedRegex)
+	pf, err := x.FindRequestedChanges(nil)
 	require.NoError(t, err)
 	require.Len(t, pf, 1)
 
@@ -312,4 +312,135 @@ func TestCheckForUpdate_Cooldown(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, result)
 	})
+}
+
+func TestLoad_CooldownAtChartsLevel(t *testing.T) {
+	const cfg = `charts:
+- chart:
+    name: argo-cd
+    repository: https://argoproj.github.io/argo-helm
+    version: "*"
+  identity: argo-cd
+  cooldown_days: 7
+`
+	ac, err := Load([]byte(cfg))
+	require.NoError(t, err)
+	require.Len(t, ac.Charts, 1)
+	require.NotNil(t, ac.Charts[0].CooldownDays)
+	require.Equal(t, 7, *ac.Charts[0].CooldownDays)
+
+	resolved := ac.findUpdateChartForUpdate(&Update{Parse: &LineParse{Identity: "argo-cd"}})
+	require.NotNil(t, resolved)
+	require.Equal(t, 7, resolved.CooldownDays)
+	require.Equal(t, "argo-cd", resolved.Name)
+}
+
+func TestResolveCooldownDays_GlobalFallback(t *testing.T) {
+	const cfg = `charts:
+- chart:
+    name: with-override
+    repository: https://example.com
+    version: "*"
+  identity: with-override
+  cooldown_days: 3
+- chart:
+    name: explicit-zero
+    repository: https://example.com
+    version: "*"
+  identity: explicit-zero
+  cooldown_days: 0
+- chart:
+    name: inherits
+    repository: https://example.com
+    version: "*"
+  identity: inherits
+cooldown_days: 7
+`
+	ac, err := Load([]byte(cfg))
+	require.NoError(t, err)
+	require.NotNil(t, ac.CooldownDays)
+	require.Equal(t, 7, *ac.CooldownDays)
+
+	override := ac.findUpdateChartForUpdate(&Update{Parse: &LineParse{Identity: "with-override"}})
+	require.Equal(t, 3, override.CooldownDays) // per-chart wins
+
+	zero := ac.findUpdateChartForUpdate(&Update{Parse: &LineParse{Identity: "explicit-zero"}})
+	require.Equal(t, 0, zero.CooldownDays) // explicit 0 overrides global, not treated as unset
+
+	inherits := ac.findUpdateChartForUpdate(&Update{Parse: &LineParse{Identity: "inherits"}})
+	require.Equal(t, 7, inherits.CooldownDays) // falls back to global
+}
+
+func TestApplyUpdatesToFiles_PerChartRegexRestricts(t *testing.T) {
+	const cfg = `charts:
+- chart:
+    name: ` + chartNameTest + `
+    repository: https://example.com
+    version: "*"
+  identity: ` + chartNameTest + `
+  filename_regex:
+  - clusters/prod/.*\.yaml
+filename_regex:
+- .*\.yaml
+`
+	ac, err := Load([]byte(cfg))
+	require.NoError(t, err)
+	il := &mockIndexLoader{indexFile: makeIndexFile(time.Now().Add(-1 * time.Hour))}
+
+	pf := ParseContent("version: 0.0.1 # helm:autoupdate:" + chartNameTest)
+	pf.OriginalFilename = "clusters/dev/app.yaml" // matches global, not per-chart
+
+	out, err := ApplyUpdatesToFiles(il, ac, []*ParsedFile{&pf})
+	require.NoError(t, err)
+	require.Len(t, out, 0)
+}
+
+func TestApplyUpdatesToFiles_PerChartOverridesGlobal(t *testing.T) {
+	const cfg = `charts:
+- chart:
+    name: ` + chartNameTest + `
+    repository: https://example.com
+    version: "*"
+  identity: ` + chartNameTest + `
+  filename_regex:
+  - .*\.txt
+filename_regex:
+- .*\.yaml
+`
+	ac, err := Load([]byte(cfg))
+	require.NoError(t, err)
+	il := &mockIndexLoader{indexFile: makeIndexFile(time.Now().Add(-1 * time.Hour))}
+
+	pf := ParseContent("version: 0.0.1 # helm:autoupdate:" + chartNameTest)
+	pf.OriginalFilename = "deploy/app.txt" // fails global, matches per-chart
+
+	out, err := ApplyUpdatesToFiles(il, ac, []*ParsedFile{&pf})
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	require.Contains(t, string(out[0].Bytes()), "version: 1.0.0 # helm:autoupdate:"+chartNameTest)
+}
+
+func TestApplyUpdatesToFiles_FallsBackToGlobal(t *testing.T) {
+	const cfg = `charts:
+- chart:
+    name: ` + chartNameTest + `
+    repository: https://example.com
+    version: "*"
+  identity: ` + chartNameTest + `
+filename_regex:
+- clusters/.*\.yaml
+`
+	ac, err := Load([]byte(cfg))
+	require.NoError(t, err)
+	il := &mockIndexLoader{indexFile: makeIndexFile(time.Now().Add(-1 * time.Hour))}
+
+	match := ParseContent("version: 0.0.1 # helm:autoupdate:" + chartNameTest)
+	match.OriginalFilename = "clusters/app.yaml"
+	noMatch := ParseContent("version: 0.0.1 # helm:autoupdate:" + chartNameTest)
+	noMatch.OriginalFilename = "other/app.yaml"
+
+	out, err := ApplyUpdatesToFiles(il, ac, []*ParsedFile{&match, &noMatch})
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	require.Equal(t, "clusters/app.yaml", out[0].OriginalFilename)
 }

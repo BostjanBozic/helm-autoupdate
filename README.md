@@ -38,15 +38,26 @@ that will bump the `version` field when a new helm chart is released.  This is w
 # Usage
 
 First, add a file named `.helm-autoupdate.yaml` in the root of your repository.  Add a `chart` item for each chart you want to update.
-The field `filename_regex` is an optional list of filename patterns to scan. If omitted, all files are considered.
+The top-level `filename_regex` is an optional list of filename patterns to scan. If omitted, all files are considered.
+
+A per-chart `filename_regex` (at the `charts[]` level) restricts which files are updated for that chart. When a chart sets its own `filename_regex`, it **overrides** the global one for that chart's updates; a chart without one falls back to the global value.
 
 ```yaml
 charts:
+# Uses the global filename_regex below.
 - chart:
     name: aws-vpc-cni
     repository: https://aws.github.io/eks-charts
     version: "*"
   identity: aws-vpc-cni
+# Only updated in files under clusters/prod/ (overrides the global pattern).
+- chart:
+    name: cert-manager
+    repository: https://charts.jetstack.io
+    version: "*"
+  identity: cert-manager
+  filename_regex:
+  - clusters/prod/.*\.yaml
 filename_regex:
 - .*\.yaml
 ```
@@ -99,21 +110,35 @@ You can combine this with GitHub's auto-merge feature and status checks to compl
 | `charts[].chart.repository` | yes | Repository URL. Supports `https://`, `oci://`, and `s3://` schemes. |
 | `charts[].chart.version` | yes | Semver constraint for the target version. Use `"*"` for latest. |
 | `charts[].chart.s3_region` | no | AWS region for S3 repositories. Falls back to the default credential chain if omitted. |
-| `charts[].chart.cooldown_days` | no | Fall back to the most recent version outside the cooldown window instead of updating to a version published fewer than N days ago. Never downgrades below the current version. See [Cooldown period](#cooldown-period). |
-| `filename_regex` | no | List of regex patterns limiting which files are scanned. All files are scanned if omitted. |
+| `charts[].cooldown_days` | no | Per-chart cooldown. Falls back to the most recent version outside the cooldown window instead of updating to a version published fewer than N days ago. Never downgrades below the current version. Overrides the global `cooldown_days`. Set at the `charts[]` level, beside `identity` (not under `chart:`). See [Cooldown period](#cooldown-period). |
+| `charts[].filename_regex` | no | Per-chart list of regex patterns. When set, only files matching these patterns are updated for this chart, and the global `filename_regex` is ignored for it. Falls back to the global `filename_regex` if omitted. Set at the `charts[]` level, beside `identity`. |
+| `cooldown_days` | no | Global default cooldown applied to any chart that does not set its own `charts[].cooldown_days`. |
+| `filename_regex` | no | Global list of regex patterns limiting which files are scanned for charts without their own `charts[].filename_regex`. All files are scanned if omitted. |
 
 # Cooldown period
 
-The optional `cooldown_days` field per chart prevents updating to a version published less than N days ago — similar to `dependabot cooldown.default-days`. This lets a new release stabilise before it is automatically applied.
+The optional `cooldown_days` field prevents updating to a version published less than N days ago — similar to `dependabot cooldown.default-days`. This lets a new release stabilise before it is automatically applied.
+
+`cooldown_days` can be set globally (top-level, applied to every chart) and/or per chart (at the `charts[]` level). A per-chart `cooldown_days` overrides the global value for that chart; an explicit `0` disables the cooldown for that chart even when a global default is set.
 
 ```yaml
+# Global default for all charts.
+cooldown_days: 7
+
 charts:
+# Inherits the global 7-day cooldown.
 - chart:
     name: aws-vpc-cni
     repository: https://aws.github.io/eks-charts
     version: "*"
-    cooldown_days: 7
   identity: aws-vpc-cni
+# Overrides the global default with a 14-day cooldown.
+- chart:
+    name: cert-manager
+    repository: https://charts.jetstack.io
+    version: "*"
+  identity: cert-manager
+  cooldown_days: 14
 ```
 
 When a cooldown is active, `helm-autoupdate` does not skip the update entirely. It iterates available versions newest-first and picks the most recent one that is both outside the cooldown window and satisfies the `version` constraint. For example, with `cooldown_days: 7` and versions `1.2.0` (2 days old) and `1.1.0` (10 days old), the tool updates to `1.1.0`. The tool never downgrades: if all versions outside the cooldown window are older than the currently pinned version, the update is skipped.

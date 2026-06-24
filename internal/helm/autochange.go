@@ -30,15 +30,37 @@ type Autochange struct {
 	Charts        []AutoUpdateCharts `json:"charts"`
 	FilenameRegex []string           `json:"filename_regex,omitempty"`
 	ParsedRegex   []*regexp.Regexp   `json:"-"`
+	// CooldownDays is the global default cooldown, used for any chart that does
+	// not set its own cooldown_days. A pointer distinguishes "unset" from an
+	// explicit 0 (no cooldown).
+	CooldownDays *int `json:"cooldown_days,omitempty"`
 }
 
 func (a *Autochange) findUpdateChartForUpdate(u *Update) *AutoUpdateChart {
 	for _, chart := range a.Charts {
 		if chart.Identity == u.Parse.Identity {
+			// chart is a copy of the slice element, so mutating chart.Chart
+			// before returning its address is safe. Resolve the per-chart
+			// cooldown and filename regex (each overriding the global default)
+			// onto the chart the update logic reads.
+			chart.Chart.CooldownDays = a.resolveCooldownDays(chart.CooldownDays)
+			chart.Chart.ParsedRegex = chart.ParsedRegex
 			return &chart.Chart
 		}
 	}
 	return nil
+}
+
+// resolveCooldownDays returns the effective cooldown: the per-chart value if
+// set, otherwise the global default, otherwise 0 (no cooldown).
+func (a *Autochange) resolveCooldownDays(perChart *int) int {
+	if perChart != nil {
+		return *perChart
+	}
+	if a.CooldownDays != nil {
+		return *a.CooldownDays
+	}
+	return 0
 }
 
 func latestVersionWithCooldown(indexFile *repo.IndexFile, desc *AutoUpdateChart, currentVersion string) (*repo.ChartVersion, error) {
@@ -134,16 +156,20 @@ func CheckForUpdate(il IndexLoader, desc *AutoUpdateChart, request *Update) (*Up
 }
 
 type AutoUpdateCharts struct {
-	Identity string          `json:"identity"`
-	Chart    AutoUpdateChart `json:"chart"`
+	Identity      string           `json:"identity"`
+	CooldownDays  *int             `json:"cooldown_days,omitempty"`
+	FilenameRegex []string         `json:"filename_regex,omitempty"`
+	ParsedRegex   []*regexp.Regexp `json:"-"`
+	Chart         AutoUpdateChart  `json:"chart"`
 }
 
 type AutoUpdateChart struct {
-	Repository   string `json:"repository"`
-	Name         string `json:"name"`
-	Version      string `json:"version"`
-	S3Region     string `json:"s3_region,omitempty"`
-	CooldownDays int    `json:"cooldown_days,omitempty"`
+	Repository   string           `json:"repository"`
+	Name         string           `json:"name"`
+	Version      string           `json:"version"`
+	S3Region     string           `json:"s3_region,omitempty"`
+	CooldownDays int              `json:"-"`
+	ParsedRegex  []*regexp.Regexp `json:"-"`
 }
 
 type ChangeFinder interface {
@@ -170,6 +196,13 @@ func ApplyUpdatesToFiles(il IndexLoader, config *Autochange, files []*ParsedFile
 		for _, update := range file.RequestedUpdates {
 			uc := config.findUpdateChartForUpdate(&update)
 			if uc == nil {
+				continue
+			}
+			effectiveRegex := config.ParsedRegex
+			if len(uc.ParsedRegex) > 0 {
+				effectiveRegex = uc.ParsedRegex
+			}
+			if !PathToLoad(effectiveRegex, file.OriginalFilename) {
 				continue
 			}
 			newChange, err := CheckForUpdate(il, uc, &update)
@@ -242,6 +275,16 @@ func Load(data []byte) (*Autochange, error) {
 			return nil, fmt.Errorf("failed to compile regex %s: %w", rgx, err)
 		}
 		autochange.ParsedRegex = append(autochange.ParsedRegex, r)
+	}
+	for i := range autochange.Charts {
+		for _, rgx := range autochange.Charts[i].FilenameRegex {
+			r, err := regexp.Compile(rgx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to compile filename_regex %q for chart %q: %w",
+					rgx, autochange.Charts[i].Identity, err)
+			}
+			autochange.Charts[i].ParsedRegex = append(autochange.Charts[i].ParsedRegex, r)
+		}
 	}
 	return &autochange, nil
 }
