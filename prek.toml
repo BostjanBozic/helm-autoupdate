@@ -42,7 +42,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/golangci/golangci-lint"
-rev = "c0d3ddc9cf3faa61a4e378e879ece580256d76e5" # frozen: v2.12.2
+rev = "27774aaf853a4fd21f1dd5e69439459dc1b26e68" # frozen: v2.13.2
 hooks = [
   { id = "golangci-lint" }
 ]
@@ -71,7 +71,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/zizmorcore/zizmor-pre-commit"
-rev = "451b56af716f9f0d0c2b816503a3fd0cf8b036fa" # frozen: v1.29.0
+rev = "cef8b8350da46d8114c7e6b7272aebdccdf193ce" # frozen: v1.30.0
 hooks = [
   { id = "zizmor" }
 ]
